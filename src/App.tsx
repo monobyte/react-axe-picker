@@ -11,6 +11,7 @@ import {
   Title,
   AutocompleteProps,
   rem,
+  CloseButton,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch, IconBuildingBank, IconCalendar, IconHash } from '@tabler/icons-react';
@@ -97,7 +98,7 @@ export default function App() {
   // Options shown in the dropdown, filtered by input
   const dropdownOptions = useMemo(() => {
     const query = searchValue.toLowerCase().trim();
-    if (!query) return [];
+    if (!query) return BONDS_DATA;
 
     return BONDS_DATA.filter((bond) =>
       bond.sierraId.toLowerCase().includes(query) ||
@@ -133,7 +134,10 @@ export default function App() {
 
   const handleInputChange = (val: string) => {
     setSearchValue(val);
-    setSelectedBondId(null);
+    // Only reset the selection if the input is cleared
+    if (val === '') {
+      setSelectedBondId(null);
+    }
   };
 
   return (
@@ -155,6 +159,20 @@ export default function App() {
               <Autocomplete
                 placeholder="Type 'US91', 'Goldman', 'USD' or '2025'..."
                 leftSection={<IconSearch style={{ width: rem(16), height: rem(16) }} stroke={1.5} />}
+                rightSection={
+                  searchValue ? (
+                    <CloseButton
+                      size="sm"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        setSearchValue('');
+                        setSelectedBondId(null);
+                      }}
+                      aria-label="Clear value"
+                    />
+                  ) : null
+                }
+                rightSectionPointerEvents="auto"
                 data={autocompleteData}
                 value={searchValue}
                 onChange={handleInputChange}
