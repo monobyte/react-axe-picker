@@ -12,6 +12,8 @@ import {
   AutocompleteProps,
   rem,
   CloseButton,
+  Chip,
+  SegmentedControl,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch, IconBuildingBank, IconCalendar, IconHash } from '@tabler/icons-react';
@@ -94,6 +96,12 @@ const renderAutocompleteOption: AutocompleteProps['renderOption'] = ({ option })
 export default function App() {
   const [searchValue, setSearchValue] = useState('');
   const [selectedBondId, setSelectedBondId] = useState<string | null>(null);
+  const [selectedCurrencies, setSelectedCurrencies] = useState<string[]>([]);
+  const [selectedIssuers, setSelectedIssuers] = useState<string[]>([]);
+  const [maturityFilter, setMaturityFilter] = useState('All');
+
+  const currencies = useMemo(() => Array.from(new Set(BONDS_DATA.map(b => b.currency))), []);
+  const issuers = useMemo(() => Array.from(new Set(BONDS_DATA.map(b => b.issuer))), []);
 
   // Options shown in the dropdown, filtered by input
   const dropdownOptions = useMemo(() => {
@@ -110,13 +118,36 @@ export default function App() {
     );
   }, [searchValue]);
 
-  // Table results: Only show if a specific bond is selected OR show all if nothing selected
+  // Table results: Filtered by quick filters and autocomplete selection
   const tableData = useMemo(() => {
+    let filtered = BONDS_DATA;
+
     if (selectedBondId) {
-      return BONDS_DATA.filter(b => b.sierraId === selectedBondId);
+      filtered = filtered.filter(b => b.sierraId === selectedBondId);
     }
-    return BONDS_DATA;
-  }, [selectedBondId]);
+
+    if (selectedCurrencies.length > 0) {
+      filtered = filtered.filter(b => selectedCurrencies.includes(b.currency));
+    }
+
+    if (selectedIssuers.length > 0) {
+      filtered = filtered.filter(b => selectedIssuers.includes(b.issuer));
+    }
+
+    if (maturityFilter !== 'All') {
+      const currentYear = new Date().getFullYear();
+      filtered = filtered.filter(b => {
+        const year = parseInt(b.maturity.substring(0, 4));
+        const diff = year - currentYear;
+        if (maturityFilter === 'Short') return diff <= 2;
+        if (maturityFilter === 'Med') return diff > 2 && diff <= 5;
+        if (maturityFilter === 'Long') return diff > 5;
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [selectedBondId, selectedCurrencies, selectedIssuers, maturityFilter]);
 
   const autocompleteData = useMemo(() => dropdownOptions.map((bond) => ({
     value: bond.description,
@@ -153,6 +184,42 @@ export default function App() {
                 Search by ID, ISIN, Issuer, Currency, or Maturity (YYYYMMDD)
               </Text>
             </div>
+
+            <Stack gap="sm">
+              <Group gap="xl" align="flex-start">
+                <Stack gap={4}>
+                  <Text size="xs" fw={700} c="dimmed" style={{ textTransform: 'uppercase' }}>Currency</Text>
+                  <Chip.Group multiple value={selectedCurrencies} onChange={setSelectedCurrencies}>
+                    <Group gap={8}>
+                      {currencies.map(ccy => (
+                        <Chip key={ccy} value={ccy} size="xs" variant="outline">{ccy}</Chip>
+                      ))}
+                    </Group>
+                  </Chip.Group>
+                </Stack>
+
+                <Stack gap={4}>
+                  <Text size="xs" fw={700} c="dimmed" style={{ textTransform: 'uppercase' }}>Issuer</Text>
+                  <Chip.Group multiple value={selectedIssuers} onChange={setSelectedIssuers}>
+                    <Group gap={8}>
+                      {issuers.map(issuer => (
+                        <Chip key={issuer} value={issuer} size="xs" variant="outline">{issuer}</Chip>
+                      ))}
+                    </Group>
+                  </Chip.Group>
+                </Stack>
+
+                <Stack gap={4}>
+                  <Text size="xs" fw={700} c="dimmed" style={{ textTransform: 'uppercase' }}>Maturity</Text>
+                  <SegmentedControl
+                    size="xs"
+                    value={maturityFilter}
+                    onChange={setMaturityFilter}
+                    data={['All', 'Short', 'Med', 'Long']}
+                  />
+                </Stack>
+              </Group>
+            </Stack>
 
             <Stack gap={4}>
               <Text size="sm" fw={700}>Select Bond</Text>
